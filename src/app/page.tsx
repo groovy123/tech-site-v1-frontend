@@ -49,9 +49,9 @@ export default function Home() {
       <div className="grid min-h-dvh grid-rows-1 grid-cols-3">
   
         { /** Side bar */}
-        <div className="relative col-start-1 row-start-1 row-span-full bg-blue-900">
-          <div className="absolute inset-0 bg-blue-800">
-            <div className="sticky top-14.25 bottom-0 left-0 h-full max-h-[calc(100dvh-(var(--spacing)*14.25))] w-2xs p-6 overflow-y-auto bg-blue-700">
+        <div className="relative col-start-1 row-start-1 row-span-full">
+          <div className="absolute inset-0">
+            <div className="sticky top-14.25 bottom-0 left-0 h-full max-h-[calc(100dvh-(var(--spacing)*14.25))] w-2xs p-6 overflow-y-auto">
               <div>
                 <nav className="flex flex-col gap-8">
                   <div className="flex flex-col gap-3">
