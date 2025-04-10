@@ -1,53 +1,52 @@
 "use client"
 
-import { Content, ContentJson, toContent } from "@/app/_domain/content";
+import { ContentJson, toContent } from "@/app/_domain/content";
 import { useContent } from "@/app/_fetcher/content_fetcher";
 import hljs, { HighlightOptions } from "highlight.js";
-import { marked, Token, Tokens, walkTokens } from "marked";
-import { useParams } from "next/navigation";
-import React, { JSX, use, useState } from "react";
 import 'highlight.js/styles/atom-one-dark.css';
-
-// type Prop = {
-//   params: Promise<any>;
-//   searchParams: Promise<any>;
-// }
+import { marked, Tokens } from "marked";
+import { useParams } from "next/navigation";
+import React, { createElement, ReactElement } from "react";
 
 type Params = {
   slug: string;
 }
 
-// async function fetchContent(param: Prop) {
-//   const params = await param.params;
-//   const response = await fetch("http://localhost:8000/contents/" + params.slug);
-//   const data = (await response.json()) as ContentJson;
-//   return new Content(data.id, data.category, data.text, data.created_at, data.update_at, data.update_no);
-// }
+type ParseResult = {
+  document: string;
+  toc?: ReactElement[];
+}
 
-function parse(json: ContentJson | undefined): string {
+function parse(json: ContentJson | undefined): ParseResult {
   if (json) {
     const content = toContent(json);
     if (content && content.text) {
-
-      const work = parseToc(content.text);
-      if (work) {
-        return work;
+      const result = parseToc(content.text);
+      if (result) {
+        return result;
       }
     }
   }
-  return "<div>text is empty!<div>";
+  // empty!
+  const empty = { 
+    document: "<div>text is empty!<div>",
+  };
+  return empty;
 }
 
-type HeadingValue = {
-  level: number,
-  slug: string,
-  title: string,
-};
+function getLinkClasses() {
+  const basic = "pl-5 inline-block border-l border-transparent text-base/8 text-gray-600 hover:border-gray-950/25 hover:text-gray-950";
+  const dark = "dark:text-gray-300 dark:hover:border-white/25 dark:hover:text-white";
+  const aria = "aria-[current]:border-gray-950 aria-[current]:font-semibold aria-[current]:text-gray-950";
+  const ariaDark = "dark:aria-[current]:border-white dark:aria-[current]:text-white";
+  return `${basic} ${dark} ${aria} ${ariaDark}`;
+}
 
-function parseToc(content: string) {
+function parseToc(content: string): ParseResult | undefined {
   // 目次用の配列を定義
   let title: string = "";
-  const toc: string[] = [];
+  const toc: ReactElement[] = [];
+  const linkClasses = getLinkClasses();
 
   // カスタムレンダラーを作成
   const renderer = new marked.Renderer();
@@ -63,7 +62,18 @@ function parseToc(content: string) {
       </h1>`;
       return "";
     }
-    toc.push(`<li><a href="#${slug}">${text}</a></li>\n`);
+
+    // <li>要素作成
+    const tocElement = createElement(
+      "li", 
+      { className: "-ml-px flex flex-col items-start gap-2", key: slug + toc.length },
+      createElement(
+        "a", 
+        { className: linkClasses, href: `#${slug}`, onClick: handleClick }, 
+        text),
+    )
+
+    toc.push(tocElement);
     return header;
   };
 
@@ -80,9 +90,20 @@ function parseToc(content: string) {
   const htmlContent = marked.parse(content);
   if (typeof htmlContent === "string") {
     // TOCを表示
-    return `${title}\n<ul>${toc.join("\n")}</ul>\n` + htmlContent;
+    const result = { 
+      document: `${title}\n${htmlContent}`,
+      toc: toc,
+    };
+    return result;
   }
-  return "";
+  return;
+}
+
+function handleClick(e: React.MouseEvent) {
+  // TODO どうやって変更するか
+  // const target = e.target as HTMLLinkElement;
+  // console.log(target.parentElement);
+  // target.setAttribute("aria-current", "location");
 }
 
 export default function ContentPage() {
@@ -94,50 +115,23 @@ export default function ContentPage() {
   if (isLoading) return "loading...";
 
   // MarkdownをHTMLに変換
-  const htmlContent = parse(data);
+  const parseResult = parse(data);
 
   return (
 
-    <div className="mx-auto grid w-full gap-10 max-w-5xl grid-cols-[minmax(0,1fr)_var(--container-2xs)]">
+    <div className="mx-auto grid w-full gap-10 max-w-5xl grid-cols-[minmax(0,1fr)_var(--container-2xs)] scroll-mt-60">
 
       { /** col0 */}
       <div className="px-4 pt-10 pb-24 sm:px-6 xl:pr-0">
-        <div className="max-w-none prose dark:prose-invert p-8 prose-headings:underline" dangerouslySetInnerHTML={{ __html: htmlContent }}></div>
+        <div className="max-w-none prose dark:prose-invert p-8 prose-headings:underline" dangerouslySetInnerHTML={{ __html: parseResult.document }}></div>
       </div>
 
       { /** col1 */}
       <div>
         <div className="sticky top-14 max-h-[calc(100svh-3.5rem)] overflow-x-hidden px-6 pt-10 pb-24">
-          <h3 className="font-mono text-sm/6 font-medium tracking-widest text-gray-500 uppercase sm:text-xs/6 dark:text-gray-400">On this page</h3>
+          <h3 className="font-mono text-sm/6 font-medium tracking-widest text-gray-500 uppercase sm:text-xs/6 dark:text-gray-400">ページの内容</h3>
           <ul className="flex flex-col gap-2 border-l dark:border-[color-mix(in_oklab,_var(--color-gray-950),white_20%)] border-[color-mix(in_oklab,_var(--color-gray-950),white_90%)]">
-            <li className="-ml-px flex flex-col items-start gap-2">
-              <a className="inline-block border-l border-transparent text-base/8 text-gray-600 hover:border-gray-950/25 hover:text-gray-950 sm:text-sm/6 dark:text-gray-300 dark:hover:border-white/25 dark:hover:text-white aria-[current]:border-gray-950 aria-[current]:font-semibold aria-[current]:text-gray-950 dark:aria-[current]:border-white dark:aria-[current]:text-white pl-5 sm:pl-4" type="button" data-headlessui-state="" href="#overview" aria-current="location">Overview</a>
-              <ul className="flex flex-col gap-2 border-l dark:border-[color-mix(in_oklab,_var(--color-gray-950),white_20%)] border-transparent">
-                <li className="-ml-px flex flex-col items-start gap-2">
-                  <a className="inline-block border-l border-transparent text-base/8 text-gray-600 hover:border-gray-950/25 hover:text-gray-950 sm:text-sm/6 dark:text-gray-300 dark:hover:border-white/25 dark:hover:text-white aria-[current]:border-gray-950 aria-[current]:font-semibold aria-[current]:text-gray-950 dark:aria-[current]:border-white dark:aria-[current]:text-white pl-8 sm:pl-7.5" type="button" data-headlessui-state="" href="#why-not-just-use-inline-styles">Why not just use inline styles?</a>
-                </li>
-              </ul>
-            </li>
-            <li className="-ml-px flex flex-col items-start gap-2">
-              <a className="inline-block border-l border-transparent text-base/8 text-gray-600 hover:border-gray-950/25 hover:text-gray-950 sm:text-sm/6 dark:text-gray-300 dark:hover:border-white/25 dark:hover:text-white aria-[current]:border-gray-950 aria-[current]:font-semibold aria-[current]:text-gray-950 dark:aria-[current]:border-white dark:aria-[current]:text-white pl-5 sm:pl-4" type="button" data-headlessui-state="" href="#thinking-in-utility-classes">Thinking in utility classes</a>
-              <ul className="flex flex-col gap-2 border-l dark:border-[color-mix(in_oklab,_var(--color-gray-950),white_20%)] border-transparent">
-                <li className="-ml-px flex flex-col items-start gap-2">
-                  <a className="inline-block border-l border-transparent text-base/8 text-gray-600 hover:border-gray-950/25 hover:text-gray-950 sm:text-sm/6 dark:text-gray-300 dark:hover:border-white/25 dark:hover:text-white aria-[current]:border-gray-950 aria-[current]:font-semibold aria-[current]:text-gray-950 dark:aria-[current]:border-white dark:aria-[current]:text-white pl-8 sm:pl-7.5" type="button" data-headlessui-state="" href="#styling-hover-and-focus-states">Styling hover and focus states</a>
-                </li>
-                <li className="-ml-px flex flex-col items-start gap-2">
-                  <a className="inline-block border-l border-transparent text-base/8 text-gray-600 hover:border-gray-950/25 hover:text-gray-950 sm:text-sm/6 dark:text-gray-300 dark:hover:border-white/25 dark:hover:text-white aria-[current]:border-gray-950 aria-[current]:font-semibold aria-[current]:text-gray-950 dark:aria-[current]:border-white dark:aria-[current]:text-white pl-8 sm:pl-7.5" type="button" data-headlessui-state="" href="#media-queries-and-breakpoints">Media queries and breakpoints</a>
-                </li>
-                <li className="-ml-px flex flex-col items-start gap-2">
-                  <a className="inline-block border-l border-transparent text-base/8 text-gray-600 hover:border-gray-950/25 hover:text-gray-950 sm:text-sm/6 dark:text-gray-300 dark:hover:border-white/25 dark:hover:text-white aria-[current]:border-gray-950 aria-[current]:font-semibold aria-[current]:text-gray-950 dark:aria-[current]:border-white dark:aria-[current]:text-white pl-8 sm:pl-7.5" type="button" data-headlessui-state="" href="#targeting-dark-mode">Targeting dark mode</a>
-                </li>
-                <li className="-ml-px flex flex-col items-start gap-2">
-                  <a className="inline-block border-l border-transparent text-base/8 text-gray-600 hover:border-gray-950/25 hover:text-gray-950 sm:text-sm/6 dark:text-gray-300 dark:hover:border-white/25 dark:hover:text-white aria-[current]:border-gray-950 aria-[current]:font-semibold aria-[current]:text-gray-950 dark:aria-[current]:border-white dark:aria-[current]:text-white pl-8 sm:pl-7.5" type="button" data-headlessui-state="" href="#using-class-composition">Using class composition</a>
-                </li>
-                <li className="-ml-px flex flex-col items-start gap-2">
-                  <a className="inline-block border-l border-transparent text-base/8 text-gray-600 hover:border-gray-950/25 hover:text-gray-950 sm:text-sm/6 dark:text-gray-300 dark:hover:border-white/25 dark:hover:text-white aria-[current]:border-gray-950 aria-[current]:font-semibold aria-[current]:text-gray-950 dark:aria-[current]:border-white dark:aria-[current]:text-white pl-8 sm:pl-7.5" type="button" data-headlessui-state="" href="#using-arbitrary-values">Using arbitrary values</a>
-                </li>
-              </ul>
-            </li>
+            {parseResult.toc}
           </ul>
         </div>
       </div>
