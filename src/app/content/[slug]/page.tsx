@@ -119,7 +119,7 @@ export default function ContentPage() {
 
   return (
 
-    <div className="mx-auto grid w-full gap-10 max-w-5xl grid-cols-[minmax(0,1fr)_var(--container-2xs)] scroll-mt-60">
+    <div className="mx-auto grid w-full gap-5 grid-cols-[minmax(0,1fr)_var(--container-2xs)] ">
 
       { /** col0 */}
       <div className="px-4 pt-10 pb-24 sm:px-6 xl:pr-0">
